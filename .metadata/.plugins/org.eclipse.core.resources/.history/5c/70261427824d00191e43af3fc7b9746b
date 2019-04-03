@@ -1,0 +1,349 @@
+package uk.ac.man.cs.eventlite.controllers;
+
+import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.handler;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+
+import java.util.Collections;
+import java.util.Date;
+import java.util.GregorianCalendar;
+
+import javax.servlet.Filter;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import uk.ac.man.cs.eventlite.config.Security;
+import uk.ac.man.cs.eventlite.EventLite;
+import uk.ac.man.cs.eventlite.dao.EventService;
+import uk.ac.man.cs.eventlite.dao.VenueService;
+import uk.ac.man.cs.eventlite.entities.Event;
+import uk.ac.man.cs.eventlite.entities.Venue;
+
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes = EventLite.class)
+@AutoConfigureMockMvc
+@DirtiesContext
+@ActiveProfiles("test")
+public class VenuesControllerTest {
+	
+	private final static String BAD_ROLE = "USER";
+
+
+	private MockMvc mvc;
+
+	@Autowired
+	private Filter springSecurityFilterChain;
+
+	@Mock
+	private Event event;
+
+	@Mock
+	private Venue venue;
+
+	@Mock
+	private EventService eventService;
+
+	@Mock
+	private VenueService venueService;
+
+	@InjectMocks
+	private VenuesController venuesController;
+
+	@Before
+	public void setup() {
+		MockitoAnnotations.initMocks(this);
+		mvc = MockMvcBuilders.standaloneSetup(venuesController).apply(springSecurity(springSecurityFilterChain))
+				.build();
+	}
+
+	@Test
+	public void getIndexWhenNoVenues() throws Exception {
+		when(eventService.findAll()).thenReturn(Collections.<Event> emptyList());
+		when(venueService.findAll()).thenReturn(Collections.<Venue> emptyList());
+
+		mvc.perform(get("/venues").accept(MediaType.TEXT_HTML)).andExpect(status().isOk())
+				.andExpect(view().name("venues/index")).andExpect(handler().methodName("getAllVenues"));
+
+		
+		verify(venueService).findAll();
+		verifyZeroInteractions(event);
+		verifyZeroInteractions(venue);
+	}
+
+	@Test
+	public void getIndexWithVenues() throws Exception {
+		when(eventService.findAll()).thenReturn(Collections.<Event> singletonList(event));
+		when(venueService.findAll()).thenReturn(Collections.<Venue> singletonList(venue));
+
+		mvc.perform(get("/venues").accept(MediaType.TEXT_HTML)).andExpect(status().isOk())
+				.andExpect(view().name("venues/index")).andExpect(handler().methodName("getAllVenues"));
+
+		
+		verify(venueService).findAll();
+		verifyZeroInteractions(event);
+		verifyZeroInteractions(venue);
+	}
+	
+	//Search Events Tests ==========================================================================================================================
+
+    @Test
+    public void getSearchEvents() throws Exception {
+
+        when(eventService.findByNameContaining("test")).thenReturn(Collections.<Event> singletonList(event));
+        mvc.perform(get("/events?search=test").accept(MediaType.TEXT_HTML)).andExpect(status().isOk())
+                .andExpect(view().name("events/index")).andExpect(handler().methodName("getAllEvents"));
+
+        verify(eventService).findByNameContaining("test");
+        verifyZeroInteractions(event);
+        verifyZeroInteractions(venue);
+    }
+	
+	//addVenue Tests ==========================================================================================================================
+	
+	@Test
+	public void getNewVenueNoAuth() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.get("/venues/addVenue")
+				.accept(MediaType.TEXT_HTML))
+		.andExpect(status().isOk())
+		.andExpect(view().name("venues/addVenue"));
+	}
+
+	@Test
+	public void getNewVenue() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.get("/venues/addVenue").with(user("Rob").roles(Security.ADMIN_ROLE))
+				.accept(MediaType.TEXT_HTML))
+		.andExpect(status().isOk()).andExpect(view().name("venues/addVenue"))
+		.andExpect(handler().methodName("addVenues"));
+	}
+
+	@Test
+	public void postVenueNoAuth() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.post("/events/venues").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "G23")
+				.param("capacity", "100" )
+				.param("roadName", "Oxford Road" )
+				.param("Postcode", "M13 9PL").accept(MediaType.TEXT_HTML).with(csrf())).andExpect(status().isFound())
+				.andExpect(header().string("Location", endsWith("/sign-in")));
+
+		verify(venueService, never()).save(venue);
+	}
+
+	@Test
+	public void postVenueBadRole() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.post("/venues").with(user("Rob").roles(BAD_ROLE))
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "G23")
+				.param("capacity", "100" )
+				.param("roadName", "Oxford Road" )
+				.param("Postcode", "M13 9PL")
+				.accept(MediaType.TEXT_HTML).with(csrf())).andExpect(status().isForbidden());
+
+		verify(venueService, never()).save(venue);
+	}
+
+	@Test
+	public void postVenueNoCsrf() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.post("/venues").with(user("Rob").roles(Security.ADMIN_ROLE))
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "G23")
+				.param("capacity", "100" )
+				.param("roadName", "Oxford Road" )
+				.param("Postcode", "M13 9PL")
+				.accept(MediaType.TEXT_HTML)).andExpect(status().isForbidden());
+
+		verify(venueService, never()).save(venue);
+	}
+
+	@Test
+	public void postVenue() throws Exception {
+		ArgumentCaptor<Venue> arg = ArgumentCaptor.forClass(Venue.class);
+
+		mvc.perform(MockMvcRequestBuilders.post("/venues").with(user("Rob").roles(Security.ADMIN_ROLE))
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "G23")
+				.param("capacity", "100" )
+				.param("roadName", "Oxford Road" )
+				.param("Postcode", "M13 9PL").accept(MediaType.TEXT_HTML).with(csrf()))
+		.andExpect(status().isFound()).andExpect(content().string(""))
+		.andExpect(view().name("redirect:/venues")).andExpect(model().hasNoErrors())
+		.andExpect(handler().methodName("createVenue")).andExpect(flash().attributeExists("ok_message"));
+
+		verify(venueService).save(arg.capture());
+		assertThat("G23", equalTo(arg.getValue().getName()));
+	}
+
+	@Test
+	public void postVenueNoName() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.post("/venues").with(user("Rob").roles(Security.ADMIN_ROLE))
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "")
+				.param("capacity", "100" )
+				.param("roadName", "Oxford Road" )
+				.param("Postcode", "M13 9PL").accept(MediaType.TEXT_HTML).with(csrf()))
+		.andExpect(status().isOk())
+		.andExpect(view().name("venues/addVenue"))
+		.andExpect(model().attributeHasFieldErrors("venue", "name"))
+		.andExpect(handler().methodName("createVenue")).andExpect(flash().attributeCount(0));
+
+		verify(venueService, never()).save(venue);
+	}
+	
+	@Test
+	public void postVenueLongName() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.post("/venues").with(user("Rob").roles(Security.ADMIN_ROLE))
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "PRMGkR5YhllhjXdKGVH20Q9QiOt8COUy01sqmFItafcjc5wHOsl5pypdMFMWd2HkM9zr8mLzRNADBaL30VcX9EAalixxFuFmlo0bb7jm2l5UV0cDvczDRFCq6pDkkBqqv7qDZ8c2WuU4zEAAb3WcTep8yM1E8Y3oUIVdNgBRZmoaivOz81rWcXlsMnVMRw7QL7LhGyXzRQDORhqtHMpRefI1SUnS9qIfJy95aY763BHINv41y4myfdu712eCC1Di")
+				.param("capacity", "100" )
+				.param("roadName", "Oxford Road" )
+				.param("Postcode", "M13 9PL").accept(MediaType.TEXT_HTML).with(csrf()))
+		.andExpect(status().isOk())
+		.andExpect(view().name("venues/addVenue"))
+		.andExpect(model().attributeHasFieldErrors("venue", "name"))
+		.andExpect(handler().methodName("createVenue")).andExpect(flash().attributeCount(0));
+
+		verify(venueService, never()).save(venue);
+	}
+	
+	@Test
+	public void postVenueNoCapacity() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.post("/venues").with(user("Rob").roles(Security.ADMIN_ROLE))
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "G23")
+				.param("capacity", "" )
+				.param("roadName", "Oxford Road" )
+				.param("Postcode", "M13 9PL").accept(MediaType.TEXT_HTML).with(csrf()))
+		.andExpect(status().isOk())
+		.andExpect(view().name("venues/addVenue"))
+		.andExpect(model().attributeHasFieldErrors("venue", "capacity"))
+		.andExpect(handler().methodName("createVenue")).andExpect(flash().attributeCount(0));
+
+		verify(venueService, never()).save(venue);
+	}
+	
+	@Test
+	public void postVenueNonIntegerCapacity() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.post("/venues").with(user("Rob").roles(Security.ADMIN_ROLE))
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "G23")
+				.param("capacity", "100.3" )
+				.param("roadName", "Oxford Road" )
+				.param("Postcode", "M13 9PL").accept(MediaType.TEXT_HTML).with(csrf()))
+		.andExpect(status().isOk())
+		.andExpect(view().name("venues/addVenue"))
+		.andExpect(model().attributeHasFieldErrors("venue", "capacity"))
+		.andExpect(handler().methodName("createVenue")).andExpect(flash().attributeCount(0));
+
+		verify(venueService, never()).save(venue);
+	}
+	
+	@Test
+	public void postVenueNegativeCapacity() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.post("/venues").with(user("Rob").roles(Security.ADMIN_ROLE))
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "G23")
+				.param("capacity", "-100" )
+				.param("roadName", "Oxford Road" )
+				.param("Postcode", "M13 9PL").accept(MediaType.TEXT_HTML).with(csrf()))
+		.andExpect(status().isOk())
+		.andExpect(view().name("venues/addVenue"))
+		.andExpect(model().attributeHasFieldErrors("venue", "capacity"))
+		.andExpect(handler().methodName("createVenue")).andExpect(flash().attributeCount(0));
+
+		verify(venueService, never()).save(venue);
+	}
+	
+	@Test
+	public void postVenueNoRoadName() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.post("/venues").with(user("Rob").roles(Security.ADMIN_ROLE))
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "G23")
+				.param("capacity", "100" )
+				.param("roadName", "" )
+				.param("Postcode", "M13 9PL").accept(MediaType.TEXT_HTML).with(csrf()))
+		.andExpect(status().isOk())
+		.andExpect(view().name("venues/addVenue"))
+		.andExpect(model().attributeHasFieldErrors("venue", "roadName"))
+		.andExpect(handler().methodName("createVenue")).andExpect(flash().attributeCount(0));
+
+		verify(venueService, never()).save(venue);
+	}
+	
+	@Test
+	public void postVenueLongRoadName() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.post("/venues").with(user("Rob").roles(Security.ADMIN_ROLE))
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "G23")
+				.param("capacity", "100" )
+				.param("roadName", "5xQHCWOmmy5i4UHjgwgHCtlFTpeSpMW3eiRlkSnhZsI9ksbNhryjjML7aVYOnDGtsMAZZKhX94B5OSz75ZQLS5ZpJf9m4gjtUDioOFBIpPQE4AzmgmY8KrstLJnL2l7AGJVNUZKiUNyf1iOqKs9N9QjtR6NtJiM5ssqD4hzAh9ejNxStARORRagmjl6xkwsosSeDww6x6Rx2j7wTkEcSJR6mrMRK39BK7UsJ21qC3gKQqBXha5l3DieszGUwfI7mrRZOLDRErewbuC9t7ncZXl0kFe7htingyfihl342jvDQ" )
+				.param("Postcode", "M13 9PL").accept(MediaType.TEXT_HTML).with(csrf()))
+		.andExpect(status().isOk())
+		.andExpect(view().name("venues/addVenue"))
+		.andExpect(model().attributeHasFieldErrors("venue", "roadName"))
+		.andExpect(handler().methodName("createVenue")).andExpect(flash().attributeCount(0));
+
+		verify(venueService, never()).save(venue);
+	}
+	
+	@Test
+	public void postVenueNoPostcode() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.post("/venues").with(user("Rob").roles(Security.ADMIN_ROLE))
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "G23")
+				.param("capacity", "100" )
+				.param("roadName", "Oxford Road" )
+				.param("Postcode", "").accept(MediaType.TEXT_HTML).with(csrf()))
+		.andExpect(status().isOk())
+		.andExpect(view().name("venues/addVenue"))
+		.andExpect(model().attributeHasFieldErrors("venue", "postcode"))
+		.andExpect(handler().methodName("createVenue")).andExpect(flash().attributeCount(0));
+
+		verify(venueService, never()).save(venue);
+	}
+	
+	@Test
+	public void postVenueWrongPostcode() throws Exception {
+		mvc.perform(MockMvcRequestBuilders.post("/venues").with(user("Rob").roles(Security.ADMIN_ROLE))
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("name", "G23")
+				.param("capacity", "100" )
+				.param("roadName", "Oxford Road" )
+				.param("Postcode", "QAL 9PL").accept(MediaType.TEXT_HTML).with(csrf()))
+		.andExpect(status().isOk())
+		.andExpect(view().name("venues/addVenue"))
+		.andExpect(model().attributeHasFieldErrors("venue", "postcode"))
+		.andExpect(handler().methodName("createVenue")).andExpect(flash().attributeCount(0));
+
+		verify(venueService, never()).save(venue);
+	}
+}

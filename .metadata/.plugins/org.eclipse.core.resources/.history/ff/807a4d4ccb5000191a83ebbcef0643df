@@ -1,0 +1,120 @@
+package uk.ac.man.cs.eventlite.controllers;
+
+import java.util.List;
+
+
+import javax.validation.Valid;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import com.mapbox.api.geocoding.v5.MapboxGeocoding;
+import com.mapbox.api.geocoding.v5.models.CarmenFeature;
+import com.mapbox.api.geocoding.v5.models.GeocodingResponse;
+import com.mapbox.geojson.Point;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import uk.ac.man.cs.eventlite.dao.EventService;
+import uk.ac.man.cs.eventlite.dao.VenueService;
+import uk.ac.man.cs.eventlite.entities.Event;
+import uk.ac.man.cs.eventlite.entities.Venue;
+
+@Controller
+@RequestMapping(value = "/venues", produces = { MediaType.TEXT_HTML_VALUE })
+public class VenuesController {
+    
+	//might be wrong 
+	//protected static final String TAG = null;
+	@Autowired
+	private EventService eventService;
+	@Autowired
+	private VenueService venueService;
+
+	
+	@RequestMapping(method = RequestMethod.GET)
+	public String getAllVenues(Model model, @RequestParam (value = "search", required = false) String getSearch) {
+		/*if(getSearch != null) {
+			model.addAttribute("venues", venueService.findByNameContaining(getSearch));
+		}else {*/
+		model.addAttribute("venues", venueService.findAll());
+
+		return "venues/index";
+	}
+	
+	
+	@RequestMapping(value = "/addVenue", method = RequestMethod.GET)
+	public String addVenues(Model model) {
+
+		if (!model.containsAttribute("venue"))
+		{
+			model.addAttribute("venue", new Venue());
+		}
+		
+		return "venues/addVenue";
+		
+	}
+	
+	@RequestMapping(method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+	public String createVenue(@RequestBody @Valid @ModelAttribute Venue venue,
+			BindingResult errors, Model model, RedirectAttributes redirectAttrs) {
+
+		if (errors.hasErrors()) {
+			model.addAttribute("venue", venue);
+			return "venues/addVenue";
+		}
+
+		venueService.save(venue);
+		redirectAttrs.addFlashAttribute("ok_message", "New venue added.");
+
+		return "redirect:/venues";
+	}	
+	
+	public void venueGeocode(Venue venue) 
+	{
+		String venueAdress = venue.getPostcode() + " " + venue.getRoadName();
+		MapboxGeocoding mapboxGeocoding = MapboxGeocoding.builder()
+				.accessToken("pk.eyJ1IjoiZ3JvdXAxMHVvbSIsImEiOiJjanRuMWRtcHgxMGkyNGFxM3l4Z3V4djFiIn0.6yB3yeaq53ORc1gPZdjbIw")
+				.query("1600 Pennsylvania Ave NW")
+				.build();
+		
+		mapboxGeocoding.enqueueCall(new Callback<GeocodingResponse>() {
+			@Override
+			public void onResponse(Call<GeocodingResponse> call, Response<GeocodingResponse> response) {
+		 
+				List<CarmenFeature> results = response.body().features();
+		 
+				if (results.size() > 0) {
+				  // Log the first results Point.
+				  Point firstResultPoint = results.get(0).center();
+				  venue.setLonglat(firstResultPoint);
+				  Log.d(TAG, "onResponse: " + firstResultPoint.toString());
+		 
+				} else {
+		 
+				  // No result for your request were found
+				  Log.d(TAG, "onResponse: No result found");
+		 
+				}
+			}
+		 
+			@Override
+			public void onFailure(Call<GeocodingResponse> call, Throwable throwable) {
+				throwable.printStackTrace();
+			}
+		});
+		
+	}
+	
+}

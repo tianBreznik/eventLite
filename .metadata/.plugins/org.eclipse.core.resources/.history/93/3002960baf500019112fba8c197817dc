@@ -1,0 +1,88 @@
+package uk.ac.man.cs.eventlite.entities;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
+
+@Entity
+@Table(name="venues")
+
+public class Venue {
+	@Id
+	@GeneratedValue
+	private long id;
+	
+	@NotNull
+	@Size(min=1, max=255)
+	private String name;
+	
+	@NotNull
+	@Min(value = 1L, message = "The capacity must positive integer")
+	private int capacity;
+	
+	@NotNull
+	@Size(min=1, max=299)
+	private String roadName;
+	
+	@NotNull
+	@Pattern(regexp="^[A-Z]{1,2}[0-9R][0-9A-Z]? [0-9][ABD-HJLNP-UW-Z]{2}$", message="Incorrect format for a postcode")
+	private String postcode;
+	
+	
+	
+	@OneToMany(targetEntity = Event.class, cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<Event> events = new ArrayList<>();
+
+	public Venue() {
+	}
+
+	public long getId() {
+		return id;
+	}
+
+	public void setId(long id) {
+		this.id = id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public int getCapacity() {
+		return capacity;
+	}
+
+	public void setCapacity(int capacity) {
+		this.capacity = capacity;
+	}
+	
+	public String getRoadName() {
+		return roadName;
+	}
+
+	public void setRoadName(String roadName) {
+		this.roadName = roadName;
+	}
+	
+	public String getPostcode() {
+		return postcode;
+	}
+
+	public void setPostcode(String postcode) {
+		this.postcode = postcode;
+	}
+}

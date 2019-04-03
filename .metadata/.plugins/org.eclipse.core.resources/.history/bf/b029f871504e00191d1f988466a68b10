@@ -1,0 +1,73 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default}">
+<head>
+  <meta charset=utf-8 />
+  <title>All events</title>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <script src='https://api.mapbox.com/mapbox.js/v3.2.0/mapbox.js'></script>
+  <link href='https://api.mapbox.com/mapbox.js/v3.2.0/mapbox.css' rel='stylesheet' />
+  <style>
+    body { margin:0; padding:0; }
+    #map { position:fixed; padding:5; bottom:30%; width:59.2%; height:30%;}
+  </style>
+</head>
+<body>
+  <div layout:fragment="content">
+    <h1>All events</h1>
+
+    <table class="table table-striped table-hover">
+      <thead>
+        <tr>
+          <th><i class="fa fa-bolt"></i> Event</th>
+          <th><i class="fa fa-map-marker"></i> Venue</th>
+          <th><i class="fa fa-calendar"></i> Date</th>
+          <th><i class="fa fa-clock-o"></i> Time</th>
+        </tr>
+      </thead>
+      <tbody>
+       <form th:object="${event}" th:action="@{/events}" method="get">
+          <div class="form-group" th:classappend="${param.error}? has-error">
+            <button class="btn btn-primary" style="border-radius:20%;background-color:white;border-color:coral;border-style:solid;color:black;float:right;" type="submit"><i class="fa fa-search" aria-hidden="true"></i> </button>
+            <input class="form-control" style="display:inline;float:right;width:20%;background-color:aquamarine; opacity: 0.4;" placeholder="Search" type="text" name="search" id="search" autofocus="autofocus"/>
+          </div>
+        </form>
+        <tr th:each="e : ${events}">
+          <td th:text="${e.name}"> My Event </td>
+          <td th:text="${e.venue.name}">Event venue</td> 
+          <td th:text="${{e.date}}">Event date</td>
+          <td th:text="${{e.time}}">Event time</td>  
+          
+          <td>
+    		<form th:action="@{/events/eventDetails/{num}(num=${e.id})}" th:method="get">
+    				<button type="submit" class="btn"> <i class="fa fa-edit" aria-hidden="true"></i> View details</button>
+    		</form>
+    	  </td>
+    	  
+          <td>
+
+            <form action="#" th:action="@{/events/update/{num}(num=${e.id})}">
+     		 		<button type="submit" class="btn btn-warning"><i class="fas fa-user-edit" href="/events/updateEvent" aria-hidden="true"></i> Update</button>
+    		</form></td>
+    	  <td>
+    		
+    	  
+    		     
+       </tr>         
+    </tbody>
+    </table>
+
+    <a class="btn btn-primary" role="button" href="/events/addEvent" sec:"AUTHORISED"><i class="fa fa-plus" aria-hidden="true"></i> Add a new event</a>
+  
+    <div id='map'></div>
+    <script>
+      L.mapbox.accessToken = 'pk.eyJ1IjoiZ3JvdXAxMHVvbSIsImEiOiJjanRuMWRtcHgxMGkyNGFxM3l4Z3V4djFiIn0.6yB3yeaq53ORc1gPZdjbIw';
+      var map = L.mapbox.map('map')
+           .setView([40, -74.50], 9)
+           .addLayer(L.mapbox.styleLayer('mapbox://styles/mapbox/streets-v11'));
+    </script>
+  
+  </div>
+</body>
+</html>

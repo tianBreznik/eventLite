@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?><testrun name="uk.ac.man.cs.eventlite.controllers.EventsControllerIntegrationTest" tests="2" started="2" failures="1" errors="0" ignored="0">
+  <testsuite name="uk.ac.man.cs.eventlite.controllers.EventsControllerIntegrationTest" time="0.726">
+    <testcase name="testSearchOneEvent" classname="uk.ac.man.cs.eventlite.controllers.EventsControllerIntegrationTest" time="0.674">
+      <failure>java.lang.AssertionError: null
+	at org.junit.Assert.fail(Assert.java:86)
+	at org.junit.Assert.assertTrue(Assert.java:41)
+	at org.junit.Assert.assertTrue(Assert.java:52)
+	at uk.ac.man.cs.eventlite.controllers.EventsControllerIntegrationTest.testSearchOneEvent(EventsControllerIntegrationTest.java:97)
+</failure>
+    </testcase>
+    <testcase name="testGetAllEvents" classname="uk.ac.man.cs.eventlite.controllers.EventsControllerIntegrationTest" time="0.052"/>
+  </testsuite>
+</testrun>

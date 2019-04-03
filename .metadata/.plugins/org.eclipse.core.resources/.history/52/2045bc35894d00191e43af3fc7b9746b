@@ -1,0 +1,14 @@
+package uk.ac.man.cs.eventlite.controllers;
+
+import static org.junit.Assert.*;
+
+import org.junit.Test;
+
+public class VenuesControllerIntegrationTest {
+
+	@Test
+	public void test() {
+		fail("Not yet implemented");
+	}
+
+}

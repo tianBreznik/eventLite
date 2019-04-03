@@ -1,0 +1,177 @@
+package uk.ac.man.cs.eventlite.controllers;
+
+import static org.hamcrest.Matchers.equalTo;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.handler;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+
+import java.util.Collections;
+import java.util.Date;
+import java.util.GregorianCalendar;
+
+import org.apache.commons.lang3.StringUtils;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.client.TestRestTemplate.HttpClientOption;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.junit4.AbstractTransactionalJUnit4SpringContextTests;
+import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+
+import uk.ac.man.cs.eventlite.EventLite;
+import uk.ac.man.cs.eventlite.dao.EventService;
+import uk.ac.man.cs.eventlite.entities.Event;
+
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes = EventLite.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext
+@ActiveProfiles("test")
+public class EventsControllerIntegrationTest extends AbstractTransactionalJUnit4SpringContextTests {
+
+	private HttpEntity<String> httpEntity;
+
+	@Autowired
+	private TestRestTemplate template;
+	
+	@Autowired
+	private EventService eventService;
+
+	@Before
+	public void setup() {
+		HttpHeaders headers = new HttpHeaders();
+		headers.setAccept(Collections.singletonList(MediaType.TEXT_HTML));
+
+		httpEntity = new HttpEntity<String>(headers);
+	}
+
+	@Test
+	public void testGetAllEvents() {
+		ResponseEntity<String> response = template.exchange("/events", HttpMethod.GET, httpEntity, String.class);
+		assertThat(response.getStatusCode(), equalTo(HttpStatus.OK));
+	}
+	
+	@Test
+	public void testSearchOneEvent() {
+		
+		//HttpHeaders headers = new HttpHeaders();
+		//headers.setAccept(Collections.singletonList(MediaType.TEXT_HTML));
+
+		//HttpEntity<String> formEntity = new HttpEntity<>(headers);
+		//this event is not being added to the model because the application is not being built again before being tested
+		//so the search event has to somehow be addedd while testing it - but this requires some adding functionality which
+		//is not the purpose of the testSearchAllEvent OR test searching for already existing events 
+		Event testEvent = new Event();
+		testEvent.setName("test one event");
+		GregorianCalendar someDate1 = new GregorianCalendar(2016,03,10,11,00,00);
+		Date testDate = new Date(someDate1.getTimeInMillis());
+		testEvent.setDate(testDate);
+		testEvent.setTime(testDate);
+		eventService.save(testEvent);
+		
+//		//ResponseEntity<String> formResponse = template.exchange("/events?search=test", HttpMethod.GET, httpEntity, String.class);
+//		ResponseEntity<String> formResponse = template.exchange("/events?search=COMP23412 Showcase, group F", HttpMethod.GET, httpEntity, String.class);
+//		String search_body = formResponse.getBody();
+//		assertTrue(search_body.contains("COMP23412 Showcase, group F"));
+//		assertThat(formResponse.getStatusCode(), equalTo(HttpStatus.OK));
+		//ResponseEntity<String> formResponse = template.exchange("/events?search=test", HttpMethod.GET, httpEntity, String.class);
+		ResponseEntity<String> formResponse = template.exchange("/events?search=test one event", HttpMethod.GET, httpEntity, String.class);
+		String search_body = formResponse.getBody();
+		assertTrue(search_body.contains("test one event"));
+		assertThat(formResponse.getStatusCode(), equalTo(HttpStatus.OK));
+		eventService.delete(testEvent.getId());
+		
+		
+		//Refresh table results
+		ResponseEntity<String> refreshResponse = template.exchange("/events", HttpMethod.GET, httpEntity, String.class);
+
+		//assertEquals(search_param, "test");
+		//assertThat(2, equalTo(countRowsInTable("test")));
+		assertThat(refreshResponse.getStatusCode(), equalTo(HttpStatus.OK));
+		
+		ResponseEntity<String> newResponse = template.exchange("/events?search=COMP23412", HttpMethod.GET, httpEntity, String.class);
+		String search_multiple = newResponse.getBody();
+		int count = StringUtils.countMatches(search_multiple, "COMP23412");
+		assertEquals(3,count);
+		assertThat(newResponse.getStatusCode(), equalTo(HttpStatus.OK));
+		
+	}	
+	
+	public void testSearchOneEvent() {
+		
+		//HttpHeaders headers = new HttpHeaders();
+		//headers.setAccept(Collections.singletonList(MediaType.TEXT_HTML));
+
+		//HttpEntity<String> formEntity = new HttpEntity<>(headers);
+		//this event is not being added to the model because the application is not being built again before being tested
+		//so the search event has to somehow be addedd while testing it - but this requires some adding functionality which
+		//is not the purpose of the testSearchAllEvent OR test searching for already existing events 
+		Event testEvent1 = new Event();
+		testEvent1.setName("test23412 lorem ipsum");
+		GregorianCalendar someDate1 = new GregorianCalendar(2016,03,10,11,00,00);
+		Date testDate1 = new Date(someDate1.getTimeInMillis());
+		testEvent1.setDate(testDate1);
+		testEvent1.setTime(testDate1);
+		eventService.save(testEvent1);
+		
+		Event testEvent2 = new Event();
+		testEvent2.setName("test23412 second kripsum");
+		GregorianCalendar someDate2 = new GregorianCalendar(2017,03,10,11,00,00);
+		Date testDate2 = new Date(someDate2.getTimeInMillis());
+		testEvent2.setDate(testDate2);
+		testEvent2.setTime(testDate2);
+		eventService.save(testEvent2);
+		
+		Event testEvent3 = new Event();
+		testEvent3.setName("test23412 third lipsom");
+		GregorianCalendar someDate3 = new GregorianCalendar(2017,03,10,11,00,00);
+		Date testDate3 = new Date(someDate3.getTimeInMillis());
+		testEvent3.setDate(testDate3);
+		testEvent3.setTime(testDate3);
+		eventService.save(testEvent3);
+		
+		
+		
+		ResponseEntity<String> multipleResponse = template.exchange("/events?search=test", HttpMethod.GET, httpEntity, String.class);
+		String search_multiple = multipleResponse.getBody();
+		int count = StringUtils.countMatches(search_multiple, "test23412");
+		assertEquals(3,count);
+		assertThat(multipleResponse.getStatusCode(), equalTo(HttpStatus.OK));
+		
+		assertThat(multipleResponse.getStatusCode(), equalTo(HttpStatus.OK));
+		eventService.delete(testEvent1.getId());
+		eventService.delete(testEvent2.getId());
+		
+		
+		
+		//Refresh table results
+		ResponseEntity<String> refreshResponse = template.exchange("/events", HttpMethod.GET, httpEntity, String.class);
+		assertThat(refreshResponse.getStatusCode(), equalTo(HttpStatus.OK));
+//		//assertEquals(search_param, "test");
+//		//assertThat(2, equalTo(countRowsInTable("test")));
+//		ResponseEntity<String> newResponse = template.exchange("/events?search=COMP23412", HttpMethod.GET, httpEntity, String.class);
+//		String search_multiple = newResponse.getBody();
+//		int count = StringUtils.countMatches(search_multiple, "COMP23412");
+//		assertEquals(3,count);
+//		assertThat(newResponse.getStatusCode(), equalTo(HttpStatus.OK));
+		
+	}	
+
+}

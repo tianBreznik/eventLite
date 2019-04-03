@@ -1,0 +1,89 @@
+package uk.ac.man.cs.eventlite.config.data;
+
+
+import java.util.Date;
+import java.util.GregorianCalendar;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.annotation.Profile;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.stereotype.Component;
+
+import uk.ac.man.cs.eventlite.dao.EventService;
+import uk.ac.man.cs.eventlite.dao.VenueService;
+import uk.ac.man.cs.eventlite.entities.Event;
+import uk.ac.man.cs.eventlite.entities.Venue;
+
+@Component
+@Profile({ "default", "test" })
+public class InitialDataLoader implements ApplicationListener<ContextRefreshedEvent> {
+
+	private final static Logger log = LoggerFactory.getLogger(InitialDataLoader.class);
+
+	@Autowired
+	private EventService eventService;
+
+	@Autowired
+	private VenueService venueService;
+
+	@Override
+	public void onApplicationEvent(ContextRefreshedEvent event) {
+
+		if (eventService.count() > 0) {
+			log.info("Database already populated. Skipping data initialization.");
+			return;
+		}
+
+		// Build and save initial models here.
+		
+		//NOTE: We do not need to set id manually. (As it is a generated value, spring will be in charge of assigning it.
+		
+		//For the use of the gregorian calendar, january = 0.
+		
+		Venue someVenue = new Venue();
+		someVenue.setName("Kilburn, G23");
+		someVenue.setCapacity(80);
+		venueService.save(someVenue);
+		
+		Venue someVenue1 = new Venue();
+		someVenue1.setName("Kilburn, LF31");
+		someVenue1.setCapacity(100);
+		venueService.save(someVenue1);
+		
+		Event someEvent1 = new Event();
+		someEvent1.setName("COMP23412 Showcase, group F");
+		GregorianCalendar someDate1 = new GregorianCalendar(2018,04,10,11,00,00);
+		Date thisDate1 = new Date(someDate1.getTimeInMillis());
+		someEvent1.setDate(thisDate1);
+		someEvent1.setTime(thisDate1);
+		
+		someEvent1.setVenue(someVenue);
+		
+		Event someEvent2 = new Event();
+		someEvent2.setName("COMP23412 Showcase, group G");
+		GregorianCalendar someDate2 = new GregorianCalendar(2018,04,11,9,00,00);
+		Date thisDate2 = new Date(someDate2.getTimeInMillis());
+		someEvent2.setDate(thisDate2);
+		someEvent2.setTime(thisDate2);
+		
+		someEvent2.setVenue(someVenue);
+		
+		Event someEvent3 = new Event();
+		someEvent3.setName("COMP23412 Showcase, group H");
+		GregorianCalendar someDate3 = new GregorianCalendar(2018,04,11,11,00,00);
+		Date thisDate3 = new Date(someDate3.getTimeInMillis());
+		someEvent3.setDate(thisDate3);
+		someEvent3.setTime(thisDate3);
+		
+		someEvent3.setVenue(someVenue);
+		
+		eventService.save(someEvent1);
+		eventService.save(someEvent2);
+		eventService.save(someEvent3);
+	
+
+	}
+}

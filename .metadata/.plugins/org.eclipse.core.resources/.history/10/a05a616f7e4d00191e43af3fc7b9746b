@@ -1,0 +1,116 @@
+package uk.ac.man.cs.eventlite.controllers;
+
+import java.util.Date;
+import java.util.GregorianCalendar;
+
+import javax.validation.Valid;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+
+import org.springframework.web.bind.annotation.PathVariable;
+
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
+
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import uk.ac.man.cs.eventlite.dao.EventService;
+import uk.ac.man.cs.eventlite.dao.VenueService;
+import uk.ac.man.cs.eventlite.entities.Event;
+import uk.ac.man.cs.eventlite.entities.Venue;
+
+@Controller
+@RequestMapping(value = "/events", produces = { MediaType.TEXT_HTML_VALUE })
+public class EventsController {
+
+	@Autowired
+	private EventService eventService;
+	@Autowired
+	private VenueService venueService;
+
+	@RequestMapping(method = RequestMethod.GET)
+	public String getAllEvents(Model model, @RequestParam (value = "search", required = false) String getSearch) {
+		if(getSearch != null) {
+			model.addAttribute("events", eventService.findByNameContaining(getSearch));
+		}else {
+			model.addAttribute("events", eventService.findAll());
+		}
+
+		return "events/index";
+	}
+	
+
+	@RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
+	public String deleteEvent(@PathVariable("id") long id) {
+		eventService.delete(id);
+		return "redirect:/events";
+	}
+	
+	
+	
+	
+	@RequestMapping(value = "/addEvent", method = RequestMethod.GET)
+	public String addEvents(Model model) {
+
+		if (!model.containsAttribute("event"))
+		{
+			model.addAttribute("events", new Event());
+		}
+		
+		model.addAttribute("venues", venueService.findAll());
+		
+		return "events/addEvent";
+		
+	}
+	
+	@RequestMapping(method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+	public String createEvent(@RequestBody @Valid @ModelAttribute Event event,
+			BindingResult errors, Model model, RedirectAttributes redirectAttrs) {
+
+		if (errors.hasErrors()) {
+			model.addAttribute("event", event);
+			model.addAttribute("venues", venueService.findAll());
+			return "events/addEvent";
+		}
+
+		eventService.save(event);
+		redirectAttrs.addFlashAttribute("ok_message", "New event added.");
+
+		return "redirect:/events";
+	}
+
+	
+	@RequestMapping(value = "/update/{id}", method = RequestMethod.GET)
+	public String updateEvents(@PathVariable("id") long id, Model model) {
+		
+		model.addAttribute("events", eventService.getEventbyID(id));
+		model.addAttribute("venues", venueService.findAll());
+
+		return "events/updateEvent";
+		
+	}
+	
+	@RequestMapping(method = RequestMethod.POST)
+	public String updateEvents(@RequestBody @Valid @ModelAttribute Event event) {
+		Event updatedEvent = eventService.getEventbyID(event.getId());
+		
+		updatedEvent.setName(event.getName()); 
+		updatedEvent.setDate(event.getDate());
+		updatedEvent.setTime(event.getTime());
+		updatedEvent.setVenue(event.getVenue());
+		
+		eventService.save(event);
+
+		return "redirect:/events";
+	}
+>>>>>>> refs/remotes/origin/developmentBranch
+		
+	
+}
